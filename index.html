@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لعبة أوبي الجماعية - Multiplayer Obby</title>
+    <title>لعبة أوبي الاحترافية - Pro Obby Game</title>
     <style>
         body {
             margin: 0;
-            background: #0f172a;
+            background: #090d16;
             color: #fff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             overflow: hidden;
@@ -19,69 +19,79 @@
         }
         #login-screen {
             position: absolute;
-            background: rgba(15, 23, 42, 0.95);
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.7);
             text-align: center;
             z-index: 10;
+            border: 2px solid #38bdf8;
         }
+        h2 { color: #38bdf8; margin-top: 0; }
         input {
-            padding: 10px;
-            font-size: 16px;
-            border-radius: 8px;
-            border: none;
-            margin-bottom: 15px;
-            width: 200px;
+            padding: 12px;
+            font-size: 18px;
+            border-radius: 10px;
+            border: 2px solid #64748b;
+            background: #0f172a;
+            color: #fff;
+            margin-bottom: 20px;
+            width: 240px;
             text-align: center;
         }
+        input:focus { border-color: #38bdf8; outline: none; }
         button {
-            padding: 10px 20px;
-            font-size: 16px;
-            background: #2ed573;
+            padding: 12px 30px;
+            font-size: 18px;
+            background: #22c55e;
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
             font-weight: bold;
+            box-shadow: 0 5px 15px rgba(34, 197, 94, 0.4);
+            transition: 0.2s;
         }
-        button:hover { background: #26af5f; }
+        button:hover { background: #16a34a; transform: translateY(-2px); }
         canvas {
-            background: linear-gradient(to bottom, #38bdf8, #bae6fd);
-            box-shadow: 0 0 25px rgba(0,0,0,0.6);
-            border-radius: 10px;
+            background: linear-gradient(to bottom, #0284c7, #7dd3fc);
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            border-radius: 12px;
+            border: 3px solid #0369a1;
         }
         #ui {
             position: absolute;
-            top: 20px;
+            top: 15px;
             font-size: 18px;
             font-weight: bold;
-            background: rgba(0,0,0,0.5);
-            padding: 8px 15px;
-            border-radius: 20px;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 10px 20px;
+            border-radius: 25px;
+            border: 1px solid #38bdf8;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
     </style>
 </head>
 <body>
 
     <div id="login-screen">
-        <h2>أدخل اسم اللاعب للدخول إلى الأوبي</h2>
-        <input type="text" id="usernameInput" placeholder="اسمك هنا..." maxlength="12">
+        <h2>🎮 أوبي روبلوكس العربية</h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 15px;">اكتب اسمك وادخل لتلعب مع أصدقائك أونلاين!</p>
+        <input type="text" id="usernameInput" placeholder="اسم اللاعب..." maxlength="12">
         <br>
-        <button onclick="startGame()">دخول اللعبة</button>
+        <button onclick="startGame()">دخول السيرفر</button>
     </div>
 
-    <div id="ui" style="display:none;">اللاعبون المتصلون: <span id="player-count">1</span> | استخدم A, D أو الأسهم للحركة ومسافة للقفز</div>
-    <canvas id="gameCanvas" width="800" height="500" style="display:none;"></canvas>
+    <div id="ui" style="display:none;">👥 اللاعبون أونلاين: <span id="player-count">1</span> | الحركة: [A, D] أو الأسهم | القفز: [Space]</div>
+    <canvas id="gameCanvas" width="900" height="550" style="display:none;"></canvas>
 
-    <!-- استدعاء فايربيز لربط اللاعبين أونلاين -->
+    <!-- فايربيز للربط السحابي اللحظي -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
     <script>
-        // إعدادات الاتصال بالسحابة المجانية
         const firebaseConfig = {
-            databaseURL: "https://obby-multiplayer-default-rtdb.firebaseio.com/" // قاعدة بيانات تجريبية عامة جاهزة للربط السريع
+            databaseURL: "https://obby-multiplayer-default-rtdb.firebaseio.com/"
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
@@ -94,34 +104,39 @@
         let players = {};
         
         let player = {
-            x: 50, y: 350, w: 30, h: 40,
-            vx: 0, vy: 0, speed: 5, jumpForce: -11, gravity: 0.5, grounded: false,
+            x: 50, y: 420, w: 32, h: 45,
+            vx: 0, vy: 0, speed: 5.5, jumpForce: -12, gravity: 0.55, grounded: false,
             color: '#' + Math.floor(Math.random()*16777215).toString(16)
         };
 
         let keys = {};
+        
+        // خريطة الأوبي المليئة بالتحديات والمنصات المتحركة
         let platforms = [
-            {x: 0, y: 420, w: 800, h: 80, color: '#22c55e'},
-            {x: 180, y: 330, w: 100, h: 20, color: '#f59e0b'},
-            {x: 340, y: 250, w: 100, h: 20, color: '#f59e0b'},
-            {x: 520, y: 180, w: 120, h: 20, color: '#f59e0b'},
-            {x: 680, y: 120, w: 90, h: 20, color: '#3b82f6'}
+            {x: 0, y: 480, w: 900, h: 70, color: '#15803d', type: 'static'}, // البداية
+            {x: 180, y: 390, w: 110, h: 22, color: '#ea580c', type: 'static'},
+            {x: 340, y: 310, w: 100, h: 22, color: '#ea580c', type: 'static'},
+            // منصة متحركة أفقياً
+            {x: 500, y: 240, w: 120, h: 22, color: '#9333ea', type: 'moving', minX: 450, maxX: 650, dir: 2},
+            {x: 700, y: 170, w: 90, h: 22, color: '#2563eb', type: 'static'},
+            {x: 820, y: 110, w: 60, h: 22, color: '#eab308', type: 'static'} // النهاية الفائزة
         ];
+
         let hazards = [
-            {x: 80, y: 440, w: 100, h: 40},
-            {x: 280, y: 440, w: 240, h: 40}
+            {x: 90, y: 510, w: 90, h: 40},
+            {x: 300, y: 510, w: 180, h: 40},
+            {x: 550, y: 510, w: 250, h: 40}
         ];
 
         function startGame() {
             const name = document.getElementById('usernameInput').value.trim();
-            if (!name) { alert('الرجاء إدخال الاسم!'); return; }
+            if (!name) { alert('الرجاء إدخال اسم اللاعب!'); return; }
             myName = name;
             
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('ui').style.display = 'block';
             canvas.style.display = 'block';
 
-            // مراقبة اللاعبين الآخرين في السيرفر
             db.ref('players').on('value', snapshot => {
                 players = snapshot.val() || {};
                 document.getElementById('player-count').innerText = Object.keys(players).length;
@@ -134,7 +149,7 @@
         window.addEventListener('keyup', e => keys[e.code] = false);
 
         function resetPlayer() {
-            player.x = 50; player.y = 350; player.vx = 0; player.vy = 0;
+            player.x = 50; player.y = 420; player.vx = 0; player.vy = 0;
         }
 
         function update() {
@@ -152,8 +167,20 @@
             player.y += player.vy;
             player.grounded = false;
 
-            // الاصطدام بالمنصات
+            // تحريك المنصات المتحركة وتحديث موقع اللاعب فوقها إن وجد
             platforms.forEach(p => {
+                if (p.type === 'moving') {
+                    p.x += p.dir;
+                    if (p.x < p.minX || p.x > p.maxX) p.dir *= -1;
+                    
+                    // إذا كان اللاعب فوق المنصة المتحركة يتحرك معها
+                    if (player.x < p.x + p.w && player.x + player.w > p.x &&
+                        player.y + player.h > p.y && player.y + player.h - player.vy <= p.y) {
+                        player.x += p.dir;
+                    }
+                }
+
+                // الاصطدام بالمنصات
                 if (player.x < p.x + p.w && player.x + player.w > p.x &&
                     player.y + player.h > p.y && player.y + player.h - player.vy <= p.y) {
                     player.y = p.y - player.h;
@@ -162,7 +189,7 @@
                 }
             });
 
-            // الحمم
+            // الاصطدام بالحمم (الخسارة)
             hazards.forEach(h => {
                 if (player.x < h.x + h.w && player.x + player.w > h.x &&
                     player.y < h.y + h.h && player.y + player.h > h.y) {
@@ -172,7 +199,13 @@
 
             if (player.y > canvas.height) resetPlayer();
 
-            // إرسال موقعك للسيرفر للسماح للآخرين برؤيتك
+            // الفوز عند الوصول للنهاية
+            if (player.x >= 820 && player.x <= 880 && player.y <= 110) {
+                alert('🎉 مبروك! لقد انهيت مرحلة الأوبي بنجاح!');
+                resetPlayer();
+            }
+
+            // إرسال البيانات للسيرفر
             db.ref('players/' + myId).set({
                 name: myName, x: player.x, y: player.y, color: player.color
             });
@@ -181,29 +214,42 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // رسم المنصات
+            // رسم المنصات مع تأثيرات بصرية
             platforms.forEach(p => {
                 ctx.fillStyle = p.color;
                 ctx.fillRect(p.x, p.y, p.w, p.h);
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(p.x, p.y, p.w, p.h);
             });
 
-            // رسم الحمم
-            ctx.fillStyle = '#ef4444';
+            // رسم الحمم المتوهجة
+            ctx.fillStyle = '#dc2626';
             hazards.forEach(h => {
                 ctx.fillRect(h.x, h.y, h.w, h.h);
+                ctx.fillStyle = '#f87171';
+                ctx.fillRect(h.x, h.y, h.w, 6);
+                ctx.fillStyle = '#dc2626';
             });
 
-            // رسم جميع اللاعبين المتصلين
+            // رسم اللاعبين الآخرين
             for (let id in players) {
                 let p = players[id];
                 ctx.fillStyle = p.color || '#000';
-                ctx.fillRect(p.x, p.y, 30, 40);
+                ctx.fillRect(p.x, p.y, 32, 45);
+                
+                // رسم الرأس كشخصية روبلوكس مصغرة
+                ctx.fillStyle = '#fde047';
+                ctx.fillRect(p.x + 6, p.y - 12, 20, 14);
 
-                // كتابة اسم اللاعب فوق شخصيته
-                ctx.fillStyle = '#000';
-                ctx.font = '12px Tahoma';
+                // اسم اللاعب
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 13px Tahoma';
                 ctx.textAlign = 'center';
-                ctx.fillText(p.name, p.x + 15, p.y - 8);
+                ctx.shadowColor = '#000';
+                ctx.shadowBlur = 4;
+                ctx.fillText(p.name, p.x + 16, p.y - 20);
+                ctx.shadowBlur = 0;
             }
         }
 
@@ -213,7 +259,6 @@
             requestAnimationFrame(loop);
         }
 
-        // حذف اللاعب من السيرفر عند إغلاق الصفحة
         window.addEventListener('beforeunload', () => {
             db.ref('players/' + myId).remove();
         });
