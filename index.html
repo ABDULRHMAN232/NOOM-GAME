@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لعبة أوبي الجماعية - Multiplayer Obby</title>
+    <style>
+        body {
+            margin: 0;
+            background: #0f172a;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        #login-screen {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            text-align: center;
+            z-index: 10;
+        }
+        input {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: none;
+            margin-bottom: 15px;
+            width: 200px;
+            text-align: center;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #2ed573;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { background: #26af5f; }
+        canvas {
+            background: linear-gradient(to bottom, #38bdf8, #bae6fd);
+            box-shadow: 0 0 25px rgba(0,0,0,0.6);
+            border-radius: 10px;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            background: rgba(0,0,0,0.5);
+            padding: 8px 15px;
+            border-radius: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <h2>أدخل اسم اللاعب للدخول إلى الأوبي</h2>
+        <input type="text" id="usernameInput" placeholder="اسمك هنا..." maxlength="12">
+        <br>
+        <button onclick="startGame()">دخول اللعبة</button>
+    </div>
+
+    <div id="ui" style="display:none;">اللاعبون المتصلون: <span id="player-count">1</span> | استخدم A, D أو الأسهم للحركة ومسافة للقفز</div>
+    <canvas id="gameCanvas" width="800" height="500" style="display:none;"></canvas>
+
+    <!-- استدعاء فايربيز لربط اللاعبين أونلاين -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+    <script>
+        // إعدادات الاتصال بالسحابة المجانية
+        const firebaseConfig = {
+            databaseURL: "https://obby-multiplayer-default-rtdb.firebaseio.com/" // قاعدة بيانات تجريبية عامة جاهزة للربط السريع
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let myName = '';
+        let myId = 'player_' + Math.random().toString(36).substr(2, 9);
+        let players = {};
+        
+        let player = {
+            x: 50, y: 350, w: 30, h: 40,
+            vx: 0, vy: 0, speed: 5, jumpForce: -11, gravity: 0.5, grounded: false,
+            color: '#' + Math.floor(Math.random()*16777215).toString(16)
+        };
+
+        let keys = {};
+        let platforms = [
+            {x: 0, y: 420, w: 800, h: 80, color: '#22c55e'},
+            {x: 180, y: 330, w: 100, h: 20, color: '#f59e0b'},
+            {x: 340, y: 250, w: 100, h: 20, color: '#f59e0b'},
+            {x: 520, y: 180, w: 120, h: 20, color: '#f59e0b'},
+            {x: 680, y: 120, w: 90, h: 20, color: '#3b82f6'}
+        ];
+        let hazards = [
+            {x: 80, y: 440, w: 100, h: 40},
+            {x: 280, y: 440, w: 240, h: 40}
+        ];
+
+        function startGame() {
+            const name = document.getElementById('usernameInput').value.trim();
+            if (!name) { alert('الرجاء إدخال الاسم!'); return; }
+            myName = name;
+            
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('ui').style.display = 'block';
+            canvas.style.display = 'block';
+
+            // مراقبة اللاعبين الآخرين في السيرفر
+            db.ref('players').on('value', snapshot => {
+                players = snapshot.val() || {};
+                document.getElementById('player-count').innerText = Object.keys(players).length;
+            });
+
+            loop();
+        }
+
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        function resetPlayer() {
+            player.x = 50; player.y = 350; player.vx = 0; player.vy = 0;
+        }
+
+        function update() {
+            if (keys['ArrowRight'] || keys['KeyD']) player.vx = player.speed;
+            else if (keys['ArrowLeft'] || keys['KeyA']) player.vx = -player.speed;
+            else player.vx = 0;
+
+            if ((keys['Space'] || keys['ArrowUp'] || keys['KeyW']) && player.grounded) {
+                player.vy = player.jumpForce;
+                player.grounded = false;
+            }
+
+            player.vy += player.gravity;
+            player.x += player.vx;
+            player.y += player.vy;
+            player.grounded = false;
+
+            // الاصطدام بالمنصات
+            platforms.forEach(p => {
+                if (player.x < p.x + p.w && player.x + player.w > p.x &&
+                    player.y + player.h > p.y && player.y + player.h - player.vy <= p.y) {
+                    player.y = p.y - player.h;
+                    player.vy = 0;
+                    player.grounded = true;
+                }
+            });
+
+            // الحمم
+            hazards.forEach(h => {
+                if (player.x < h.x + h.w && player.x + player.w > h.x &&
+                    player.y < h.y + h.h && player.y + player.h > h.y) {
+                    resetPlayer();
+                }
+            });
+
+            if (player.y > canvas.height) resetPlayer();
+
+            // إرسال موقعك للسيرفر للسماح للآخرين برؤيتك
+            db.ref('players/' + myId).set({
+                name: myName, x: player.x, y: player.y, color: player.color
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // رسم المنصات
+            platforms.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y, p.w, p.h);
+            });
+
+            // رسم الحمم
+            ctx.fillStyle = '#ef4444';
+            hazards.forEach(h => {
+                ctx.fillRect(h.x, h.y, h.w, h.h);
+            });
+
+            // رسم جميع اللاعبين المتصلين
+            for (let id in players) {
+                let p = players[id];
+                ctx.fillStyle = p.color || '#000';
+                ctx.fillRect(p.x, p.y, 30, 40);
+
+                // كتابة اسم اللاعب فوق شخصيته
+                ctx.fillStyle = '#000';
+                ctx.font = '12px Tahoma';
+                ctx.textAlign = 'center';
+                ctx.fillText(p.name, p.x + 15, p.y - 8);
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        // حذف اللاعب من السيرفر عند إغلاق الصفحة
+        window.addEventListener('beforeunload', () => {
+            db.ref('players/' + myId).remove();
+        });
+    </script>
+</body>
+</html>
